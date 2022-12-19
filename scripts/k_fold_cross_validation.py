@@ -94,7 +94,7 @@ def make_fold_datasets(dataset, num_folds):
     for i in range(remainder):
         fold_counts[i] += 1
 
-    fold_sets = random_split(dataset, fold_counts)
+    fold_sets = random_split(dataset, fold_counts) #MJ: List of Subsets of  dataset at specified indices.
 
     return fold_sets
 
@@ -104,14 +104,15 @@ def iterate_folds(fold_sets):
     validating and testing.
     """
     num_sets = len(fold_sets)
-    for i in range(num_sets):
+    for i in range(num_sets): #MJ: num_sets = 8
         test_set = fold_sets[i]
         val_set = fold_sets[(i + 1) % num_sets]
         train_sets = fold_sets[:i] + fold_sets[(i + 2):]
         train_set = ConcatDataset(train_sets)
 
         yield train_set, val_set, test_set
-
+        
+#MJ:  output_file = make_fold_output_name(args.output_file, k)
 def make_fold_output_name(base_name, fold):
     """
     Add numbers to output file name.
@@ -127,21 +128,29 @@ def save_datasets(datasets, file):
     with open(file, 'wb') as f:
         save(datasets, f)
 
-
+#MJ: Davies & Boek, 2019:  To permit the use of existing annotated datasets, both to train our model and measure its
+# performance, we use 8-fold cross validation. We ensure the separation between testing and training data 
+# in each iteration of the cross validation, by using six folds for training, one for validation, 
+# and the remaining fold for testing, and rotate the folds eight times 
+# until each fold has uniquely been used for testing. 
 if __name__ == "__main__":
     args = parse_args()
+    
     dataset = load_dataset(
         args.spectrogram_dir,
         args.label_dir,
         args.downbeats)
+    
     fold_sets = make_fold_datasets(dataset, args.num_folds)
 
     cuda_device = device('cuda:%d' % args.cuda_device)\
                   if args.cuda_device is not None else None
 
-    # Similar to our train script, but we do this k times
+    # JA: Similar to our train script, but we do this k times
     for k, datasets in enumerate(iterate_folds(fold_sets)):
+        
         train, val, test = datasets
+        
         model = BeatNet(downbeats=args.downbeats)
         if cuda_device is not None:
             model.cuda(args.cuda_device)
@@ -160,6 +169,7 @@ if __name__ == "__main__":
             cuda_device=cuda_device,
             output_file=output_file,
             davies_stopping_condition=args.davies_stopping_condition,
+            
             fold=k)
 
         if args.output_file is not None:

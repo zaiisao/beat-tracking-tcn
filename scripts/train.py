@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 import numpy as np
 from torch.utils.data import random_split, DataLoader
 from torch.nn import BCELoss
-from torch.optim import Adam, lr_scheduler
+from torch.optim import Adam, lr_scheduler  #MJ: lr_scheduler.py
 from torch import device, save
 
 from beat_tracking_tcn.datasets.ballroom_dataset import BallroomDataset
@@ -24,6 +24,8 @@ from beat_tracking_tcn.utils.training import train, evaluate
 
 # Some tunable constants that we don't need to set often enough to
 # warrant entire command line params
+#MJ: We reduce the learn rate by a factor of 5 if the loss on the disjoint validation set reaches a plateau
+# and stop training if no improvement in the validation loss is observed for 50 epochs.
 STOPPING_THRESHOLD = 0.001
 DAVIES_CONDITION_EPOCHS = 50
 
@@ -36,7 +38,7 @@ def parse_args():
     parser.add_argument("label_dir", type=str)
     parser.add_argument(
         "-o",
-        "--output_file",
+        "--output_file", 
         default=None,
         type=str,
         help="Where to save trained model.")
@@ -104,10 +106,14 @@ def split_dataset(dataset, validation_split, test_split):
     sets based on the given proportions.
     """    
     dataset_length = len(dataset)
+    
     test_count = int(dataset_length * test_split)\
         if test_split is not None else 0
+        
     val_count = int(dataset_length * validation_split)
+    
     train_count = dataset_length - (test_count + val_count)
+    #MJ: lengths = (train_count, val_count, test_count) = (4 4 3)
     return random_split(dataset, (train_count, val_count, test_count))
 
 
@@ -138,12 +144,12 @@ def save_datasets(datasets, file):
         save(datasets, f)
 
 
-def loss_stopped_falling(loss_history, epochs):
+def loss_stopped_falling(loss_history, epochs): #MJ: epochs = DAVIES_CONDITION_EPOCHS = 50
     """
     Check if drop in first order difference over a given number of epochs is
     below the STOPPING_THRESHOLD.
     """    
-    return - np.sum(np.diff(loss_history[-epochs:])) < STOPPING_THRESHOLD
+    return - np.sum( np.diff( loss_history[-epochs:] ) ) < STOPPING_THRESHOLD
 
 
 def train_loop(
@@ -194,9 +200,12 @@ def train_loop(
     
     criterion = BCELoss()
     optimiser = Adam(model.parameters(), lr=learning_rate)
+    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimiser, 'min', factor=0.2)
 
+    #MJ: within train_loop():
     for epoch in range(num_epochs):
+        
         epoch_report = train(
             model,
             criterion,
@@ -206,13 +215,15 @@ def train_loop(
             cuda_device=cuda_device)
 
         if val_loader is not None:
+            
             val_report = evaluate(
                 model,
                 criterion,
                 val_loader,
                 batch_callback=val_callback,
                 cuda_device=cuda_device)
-
+            
+            #MJ: Use scheduler to adjust lr: class ReduceLROnPlateau:
             scheduler.step(val_report["epoch_loss"])
 
             val_loss_history.append(val_report["epoch_loss"])
@@ -262,6 +273,11 @@ def test_model(model, test_loader, cuda_device=None):
     
     criterion = BCELoss()
 
+    #MJ: evaluate():   return {
+    #     "total_batches": i + 1,
+    #     "epoch_loss": running_loss / (i + 1),
+    #     "running_evaluations": running_evaluations 
+    # }
     test_report = evaluate(
         model,
         criterion,
@@ -274,6 +290,7 @@ def test_model(model, test_loader, cuda_device=None):
 
 
 if __name__ == '__main__':
+    
     args = parse_args()
 
     # Make sure we're not trying to do anything silly like use the stopping
@@ -288,8 +305,10 @@ if __name__ == '__main__':
         args.spectrogram_dir,
         args.label_dir,
         args.downbeats)
+    
     train_dataset, val_dataset, test_dataset =\
         split_dataset(dataset, args.validation_split, args.test_split)
+        
     train_loader, val_loader, test_loader =\
         make_data_loaders(
             (train_dataset, val_dataset, test_dataset),
@@ -310,7 +329,7 @@ if __name__ == '__main__':
         num_epochs=args.num_epochs,
         cuda_device=cuda_device,
         output_file=args.output_file,
-        davies_stopping_condition=args.davies_stopping_condition)
+        davies_stopping_condition=args.davies_stopping_condition)  #MJ: fold = None; k_fold_cross_validation.py uses fold = k
 
     # Save our model to disk 
     if args.output_file is not None:
@@ -323,4 +342,4 @@ if __name__ == '__main__':
             args.dataset_output_file)
 
     # Evaluate on our test set
-    test_model(model, test_loader, cuda_device=cuda_device)
+    test_model(model, test_loader, cuda_device=cuda_device)  #MJ: fold = None

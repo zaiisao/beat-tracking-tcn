@@ -44,10 +44,44 @@ def evaluate_model(
     offered by mir_eval.beat.
     """        
 
+    #MJ:   Given a spectrogram, predict a list of beat times using the TCN model and  a DBN post-processor.
+    
     prediction = predict_beats_from_spectrogram(
         spectrogram,
         model_checkpoint,
         downbeats=downbeats)
+
+#mir_eval/beat.py[ evaluate()]: Compute all measures:
+# # F-Measure
+#     scores['F-measure'] = util.filter_kwargs(f_measure, reference_beats,
+#                                              estimated_beats, **kwargs)
+
+#     # Cemgil
+#     scores['Cemgil'], scores['Cemgil Best Metric Level'] = \
+#         util.filter_kwargs(cemgil, reference_beats, estimated_beats, **kwargs)
+
+#     # Goto
+#     scores['Goto'] = util.filter_kwargs(goto, reference_beats,
+#                                         estimated_beats, **kwargs)
+
+#     # P-Score
+#     scores['P-score'] = util.filter_kwargs(p_score, reference_beats,
+#                                            estimated_beats, **kwargs)
+
+#     # Continuity metrics
+#     (scores['Correct Metric Level Continuous'],
+#      scores['Correct Metric Level Total'],
+#      scores['Any Metric Level Continuous'],
+#      scores['Any Metric Level Total']) = util.filter_kwargs(continuity,
+#                                                             reference_beats,
+#                                                             estimated_beats,
+#                                                             **kwargs)
+
+#     # Information gain
+#     scores['Information gain'] = util.filter_kwargs(information_gain,
+#                                                     reference_beats,
+#                                                     estimated_beats,
+#                                                     **kwargs)
 
     if downbeats:
         scores = (evaluate(ground_truth[0], prediction[0]),
@@ -79,6 +113,7 @@ def evaluate_model_on_dataset(
         spectrogram = dataset[i]["spectrogram"].unsqueeze(0)
         ground_truth = ground_truths[i]
 
+        #MJ:   Given a spectrogram, predict a list of beat times using the TCN model and  a DBN post-processor.
         scores = evaluate_model(
             model_checkpoint,
             spectrogram,
@@ -91,6 +126,7 @@ def evaluate_model_on_dataset(
         if downbeats:
             beat_scores = scores[0]
             downbeat_scores = scores[1]
+            
             for metric in downbeat_scores:
                 if metric not in running_downbeat_scores:
                     running_downbeat_scores[metric] = 0.0
@@ -109,10 +145,12 @@ def evaluate_model_on_dataset(
         # to a print callback function.
         if print_callback is not None:
             print_callback(i, running_scores)
-
+            
+    #END for i in range(len(dataset))
+    
     # After all iterations, calculate mean scores.
     for metric in running_scores:
-        mean_scores[metric] = running_scores[metric] / (i + 1)        
+        mean_scores[metric] = running_scores[metric] / (i + 1)     #MJ: now i+1 is equal to the num of files in dataset   
     if downbeats:
         for metric in running_downbeat_scores:
             mean_downbeat_scores[metric] =\

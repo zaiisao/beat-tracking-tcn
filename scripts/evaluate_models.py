@@ -35,12 +35,14 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == '__main__':
+    
     args = parse_args()
 
     def print_callback(k, i, running_scores):
         """
         Evaluation function set up such that scores are passed to a callback
         after each iteration — this allows for printing or logging of results.
+        
         This function prints results to a table in real time, using one line
         per fold.
         """        
@@ -84,9 +86,11 @@ if __name__ == '__main__':
         
         # Print, overwriting the previously printed line each time.
         print(line, end="\r")
-
+    #END def print_callback(k, i, running_scores)
+    
     # Take the given dataset as canonical, strip away the fold index, and
     # store the root so that we can iterate through all the fold datasets
+    
     ds_root, ext = os.path.splitext(args.saved_k_fold_dataset)
     ds_root = os.path.splitext(ds_root)[0]
 
@@ -95,7 +99,7 @@ if __name__ == '__main__':
     downbeat_score_history = {}
 
     for k, model_checkpoint in enumerate(args.model_checkpoints):
-        # Find the dataset file for the given fold and load only the unseen
+        # Find the dataset file for the given fold k  and load only the unseen
         # test set.
         dataset_file = "%s.fold%.3d%s" % (ds_root, k, ext)
         with open(dataset_file, 'rb') as f:
@@ -105,6 +109,7 @@ if __name__ == '__main__':
         # be a tuple containing two lists — beat times and downbeat times.
         # Otherwise, we simply want a list of beat times.
         if args.downbeats:
+            
             ground_truths = tuple(zip(
                 [test.dataset.get_ground_truth(test.indices[i])
                     for i in range(len(test))],
@@ -134,6 +139,7 @@ if __name__ == '__main__':
         for metric in scores:
             if metric not in score_history:
                 score_history[metric] = []
+                
             score_history[metric].append(scores[metric])
         
         if args.downbeats:
@@ -141,7 +147,8 @@ if __name__ == '__main__':
                 if metric not in downbeat_score_history:
                     downbeat_score_history[metric] = []
                 downbeat_score_history[metric].append(db_scores[metric])
-
+    #END for k, model_checkpoint in enumerate(args.model_checkpoints)
+    
     # Once all folds are complete, print a line of mean scores
     line = "  Mean |" 
     for metric in score_history:

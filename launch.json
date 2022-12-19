@@ -1,0 +1,70 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "Python: Current File (wavebeat)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": [
+                "--ballroom_audio_dir", "/mount/beat-tracking/ballroom/data",
+                "--ballroom_annot_dir", "/mount/beat-tracking/ballroom/label",
+                "--hainsworth_audio_dir", "/mount/beat-tracking/hains/data",
+                "--hainsworth_annot_dir", "/mount/beat-tracking/hains/label",
+                "--beatles_audio_dir", "/mount/beat-tracking/beatles/data",
+                "--beatles_annot_dir", "/mount/beat-tracking/beatles/label",
+                "--rwc_popular_audio_dir", "/mount/beat-tracking/rwc/data",
+                "--rwc_popular_annot_dir", "/mount/beat-tracking/rwc/label",
+                //"--accelerator", "ddp",
+                //"--gpus",  "4",
+                
+                "--preload", // ==True
+               "--precision", "16",
+               "--patience", "10",
+               "--train_length", "2097152",
+               "--eval_length", "2097152",
+               "--model_type", "dstcn",
+               "--act_type", "PReLU",
+               "--norm_type", "BatchNorm",
+                "--channel_width", "32",
+               "--channel_growth", "32",
+               "--augment",  // ==True
+               "--batch_size", "16",
+                "--audio_sample_rate", "22050",
+                "--num_workers", "24",
+               // "--max_epochs", "100",
+                "--validation_fold", "0",
+               // "--logdir", "/home/yeol/moon/wavebeat/checkpoints/fold_0"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+
+        
+
+        {
+            "name": "Python: UnitTest Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
+
+
+// python -m pudb train.py --ballroom_audio_dir /mount/beat-tracking/ballroom/data --ballroom_annot_dir/mount/beat-tracking/beatles/data \
+// --hainsworth_audio_dir /mount/beat-tracking/hains/data --hainsworth_annot_dir /mount/beat-tracking/hains/label  \
+// --beatles_audio_dir /mount/beat-tracking/beatles/data --beatles_annot_dir /mount/beat-tracking/beatles/label     \
+// --rwc_audio_dir /mount/beat-tracking/rwc/data --rwc_annot_dir /mount/beat-tracking/rwc/label \
+// --gpus 4 --preload --precision 16 --patience 10 --train_length 2097152 --eval_length 2097152 --model_type dstcn --act_type PReLU --norm_type BatchNorm \
+// --channel_width 32 --channel_growth 32 --augment --batch_size 16 --lr 1e-3 --gradient_clip_val 4.0 --audio_sample_rate 22050 --num_workers 24 \
+// --max-epochs 100
+
+//Distributed Data Parallel Spawn
+//ddp_spawn is exactly like ddp except that it uses .spawn to start the training processes.

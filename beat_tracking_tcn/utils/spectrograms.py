@@ -20,14 +20,14 @@ def create_spectrogram(
         hop_length_in_seconds,
         n_mels):
     
-    x, sr = librosa.load(file_path)
-    hop_length_in_samples = int(np.floor(hop_length_in_seconds * sr))
-    spec = librosa.feature.melspectrogram(
+    x, sr = librosa.load(file_path) # x size is 1425409 in samples
+    hop_length_in_samples = int(np.floor(hop_length_in_seconds * sr)) # spectrogram size = floor((x length - n_fft) / hop_length) + 1
+    spec = librosa.feature.melspectrogram(  #MJ: return: np.ndarray [shape=(…, n_mels, t)]
         x,
         sr=sr,
         n_fft=n_fft,
         hop_length=hop_length_in_samples,
-        n_mels=n_mels)
+        n_mels=n_mels) # (81, 6480)
     mag_spec = np.abs(spec)
 
     return mag_spec
@@ -53,9 +53,9 @@ def create_spectrograms(
         print('Saved spectrum for {}'.format(file.name))
 
 def trim_spectrogram(spectrogram, trim_size):
-    output = np.zeros(trim_size)
-    dim0_range = min(trim_size[0], spectrogram.shape[0])
-    dim1_range = min(trim_size[1], spectrogram.shape[1])
+    output = np.zeros(trim_size)  #MJ: trim_size: shape = (81,3000)
+    dim0_range = min(trim_size[0], spectrogram.shape[0]) #:MJ: freq bins
+    dim1_range = min(trim_size[1], spectrogram.shape[1])  #MJ: sample points
 
     output[:dim0_range, :dim1_range] = spectrogram[:dim0_range, :dim1_range]
     return output

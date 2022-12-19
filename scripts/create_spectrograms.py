@@ -13,6 +13,21 @@ Description: Process a folder of audio files to create a folder of mel
 import librosa
 import numpy as np
 import os
+import sys
+
+#MJ: sys.path:
+# the first item of this list, path[0], is the directory containing the script that was used
+# to invoke the Python interpreter.
+
+# If the script directory is not available (e.g. if the interpreter is invoked interactively
+#  or if the script is read from standard input), path[0] is the empty string, 
+# which directs Python to search modules in the current directory first.
+
+#Add directly the current working directory to sys.path:
+sys.path.append('/home/yeol/moon/beat-tracking-tcn')
+#sys.path.append('/home/yeol/moon/beat-tracking-tcn/beat_tracking_tcn')
+print(f' sys.path=\n{sys.path}')
+
 from argparse import ArgumentParser
 
 from beat_tracking_tcn.utils.spectrograms import create_spectrograms
@@ -58,6 +73,8 @@ def parse_args():
     return parser.parse_args()
 
 
+
+#MJ: package install errors for numba and librosa: https://github.com/librosa/librosa/issues/1160
 if __name__ == '__main__':
     args = parse_args()
 

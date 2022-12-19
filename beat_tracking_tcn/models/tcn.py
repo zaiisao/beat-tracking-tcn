@@ -55,7 +55,7 @@ class NonCausalTemporalLayer(nn.Module):
         """
         super(NonCausalTemporalLayer, self).__init__()
 
-        self.conv1 = nn.Conv1d(
+        self.conv1 = nn.Conv1d(  #MJ: the input tensor: (B,C,L)
                 inputs,
                 outputs,
                 kernel_size,
@@ -95,7 +95,7 @@ class NonCausalTemporalLayer(nn.Module):
             torch.Tensor -- A PyTorch tensor of size specified in the
                             constructor.
         """
-        y = self.conv1(x)
+        y = self.conv1(x)   #MJ: the input tensor: (B,C,L)
         y = self.elu1(y)
         y = self.dropout1(y)
         y = self.conv2(y)
@@ -139,7 +139,7 @@ class NonCausalTemporalConvolutionalNetwork(nn.Module):
         super(NonCausalTemporalConvolutionalNetwork, self).__init__()
 
         self.layers = []
-        n_levels = len(channels)
+        n_levels = len(channels)  #MJ:  n_levels 11
 
         for i in range(n_levels):
             dilation = 2 ** i
@@ -148,12 +148,12 @@ class NonCausalTemporalConvolutionalNetwork(nn.Module):
             n_channels_out = channels[i]
 
             self.layers.append(
-                NonCausalTemporalLayer(
+                NonCausalTemporalLayer( ##MJ: Conv1d: input tensor=(B,C,L)
                     n_channels_in,
                     n_channels_out,
                     dilation,
                     kernel_size,
-                    stride=1,
+                    stride=1, # JA: Because the stride is 1, the upper layers of TCN will have the temporal size as the lower layers
                     padding=(kernel_size - 1) * dilation,
                     dropout=dropout
                 )
