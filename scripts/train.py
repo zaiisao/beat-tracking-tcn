@@ -10,6 +10,8 @@ File: scripts/train.py
 Descrption: Train a BeatNet model on a given dataset.
 """
 from argparse import ArgumentParser
+import os
+import torch
 
 import numpy as np
 from torch.utils.data import random_split, DataLoader
@@ -29,13 +31,18 @@ from beat_tracking_tcn.utils.training import train, evaluate
 STOPPING_THRESHOLD = 0.001
 DAVIES_CONDITION_EPOCHS = 50
 
+dataset_names = ["ballroom", "hainsworth", "rwc_popular", "beatles"]
 
 def parse_args():
     parser = ArgumentParser(
         description="Train a BeatNet model on a given dataset.")
 
-    parser.add_argument("spectrogram_dir", type=str)
-    parser.add_argument("label_dir", type=str)
+    # parser.add_argument("spectrogram_dir", type=str)
+    # parser.add_argument("label_dir", type=str)
+    parser.add_argument("--ballroom_dir", default=None, type=str)
+    parser.add_argument("--hainsworth_dir", default=None, type=str)
+    parser.add_argument("--rwc_popular_dir", default=None, type=str)
+    parser.add_argument("--beatles_dir", default=None, type=str)
     parser.add_argument(
         "-o",
         "--output_file", 
@@ -91,12 +98,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_dataset(spectrogram_dir, label_dir, downbeats=False):
+def load_dataset(spectrogram_dir, label_dir, dataset_name, downbeats=False):
     """
     Creates an instance of BallroomDataset from the given folders of
     spectrograms and labels.
     """    
-    dataset = BallroomDataset(spectrogram_dir, label_dir, downbeats=downbeats)
+    dataset = BallroomDataset(spectrogram_dir, label_dir, dataset_name, downbeats=downbeats)
     return dataset
 
 
@@ -301,10 +308,29 @@ if __name__ == '__main__':
         quit()
 
     # Prepare datasets and DataLoaders
-    dataset = load_dataset(
-        args.spectrogram_dir,
-        args.label_dir,
-        args.downbeats)
+    datasets = []
+    for dataset_name in dataset_names:
+        dataset_dir = None
+        if dataset_name == "ballroom":
+            dataset_dir = args.ballroom_dir
+        elif dataset_name == "hainsworth":
+            dataset_dir = args.hainsworth_dir
+        elif dataset_name == "rwc_popular":
+            dataset_dir = args.rwc_popular_dir
+        elif dataset_name == "beatles":
+            dataset_dir = args.beatles_dir
+
+        spectrogram_dir = os.path.join(dataset_dir, "spectrogram_dir")
+        label_dir = os.path.join(dataset_dir, "label")
+
+        datasets.append(load_dataset(
+            spectrogram_dir,
+            label_dir,
+            dataset_name,
+            args.downbeats)
+        )
+    
+    dataset = torch.utils.data.ConcatDataset(datasets)
     
     train_dataset, val_dataset, test_dataset =\
         split_dataset(dataset, args.validation_split, args.test_split)

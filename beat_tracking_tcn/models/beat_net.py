@@ -12,7 +12,7 @@ Description: A CNN including a Temporal Convolutional Layer designed to predict
 """
 import torch.nn as nn
 
-from beat_tracking_tcn.models.tcn import NonCausalTemporalConvolutionalNetwork
+from tcn2019.beat_tracking_tcn.models.tcn import NonCausalTemporalConvolutionalNetwork
 
 
 class BeatNet(nn.Module):
@@ -99,8 +99,9 @@ class BeatNet(nn.Module):
 
         self.out = nn.Conv1d(16, 1 if not downbeats else 2, 1)  #MJ 16 = channels
         self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
+        
+    #MJ: called by     tcn_layers, base_level_image_shape = self.tcn2019(audio_batch, number_of_backbone_layers, base_image_level_from_top)
+    def forward(self, x, number_of_backbone_layers=None, base_image_level=None):
         """
         Feed a tensor forward through the BeatNet.
 
@@ -126,7 +127,7 @@ class BeatNet(nn.Module):
         y = self.conv3(y)
         y = self.elu3(y)  #MJ: The shape of y = (B,1, H*, W*)
 
-        y = y.view(-1, y.shape[1], y.shape[2])  # y.shape: [1, 16, 3000, 1]
+        y = y.view(-1, y.shape[1], y.shape[2])  # y.shape: [8, 16, 3000, 1] => (8,16,3000)
         
         #MJ: In this way, small (overlapping) spectrogram snippets with a context of 5 frames get reduced 
         # to a single frame and 16 features, 16-dim feature vector, which retains the temporal resolution.
@@ -141,9 +142,12 @@ class BeatNet(nn.Module):
         # In the context of real-time beat tracking, such causal processing would be essential 
         # (as well as the need to adapt many other components of the beat tracking system), 
         # but for this paper where all other processing steps are performed offline
-        y = self.tcn(y) # y.shape: [1, 16, 3000] Which is the 1D tensor with channel of 16 and length of 3000 and can now enter the 1D TCN
-
-        y = self.out(y) # Output of TCN y has the same shape as the input
-        y = self.sigmoid(y)
+        #y = self.tcn(y, number_of_backbone_layers, base_image_level) # y.shape: [1, 16, 3000] Which is the 1D tensor with channel of 16 and length of 3000 and can now enter the 1D TCN
+        
+        tcn_layers, base_level_image_shape = self.tcn(y, number_of_backbone_layers, base_image_level) 
+        return  tcn_layers, base_level_image_shape
+        #MJ: Within beat_fcos, we use only the backbone of SpectralTCN
+        # y = self.out(y) # Output of TCN y has the same shape as the input
+        # y = self.sigmoid(y)
 
         return y

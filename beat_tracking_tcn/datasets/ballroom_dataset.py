@@ -32,6 +32,7 @@ class BallroomDataset(Dataset):
             self,
             spectrogram_dir,
             label_dir,
+            dataset_name,
             sr=22050,
             hop_size_in_seconds=0.01,  #MJ: = 10ms
             trim_size=(81, 3000), 
@@ -62,6 +63,7 @@ class BallroomDataset(Dataset):
         """
         self.spectrogram_dir = spectrogram_dir
         self.label_dir = label_dir
+        self.dataset_name = dataset_name
         self.data_names = self._get_data_list()
 
         self.sr = 22050
@@ -154,9 +156,20 @@ class BallroomDataset(Dataset):
         label file. Then, quantises it to the nearest spectrogram frames in
         order to allow fair performance evaluation.
         """
+        
+        file_extension = ".beats"
+        if self.dataset_name == "ballroom":
+            file_extension = ".beats"
+        elif self.dataset_name == "hainsworth":
+            file_extension = ".txt"
+        elif self.dataset_name == "rwc_popular":
+            file_extension = ".BEAT.TXT"
+        elif self.dataset_name == "beatles":
+            file_extension = ".txt"
+        
 
         with open(
-                os.path.join(self.label_dir, self.data_names[i] + '.beats'),
+                os.path.join(self.label_dir, self.data_names[i] + file_extension),
                 'r') as f:
 
             beat_times = []
