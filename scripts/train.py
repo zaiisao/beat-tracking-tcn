@@ -73,6 +73,11 @@ def parse_args():
         type=float,
         help="Proportion of the data to use for testing.")
     parser.add_argument(
+        "--lr",
+        type=float,
+        default=0.001,
+        help="Learning rate.")
+    parser.add_argument(
         "-b",
         "--batch_size",
         type=int,
@@ -94,16 +99,27 @@ def parse_args():
         "--downbeats",
         action="store_true",
         help="Trains a downbeat tracking model")
+    parser.add_argument(
+        "--validation_fold",
+        type=int,
+        default=None)
 
     return parser.parse_args()
 
 
-def load_dataset(spectrogram_dir, label_dir, dataset_name, downbeats=False):
+def load_dataset(spectrogram_dir, label_dir, dataset_name, validation_fold=None, subset=None, downbeats=False):
     """
     Creates an instance of BallroomDataset from the given folders of
     spectrograms and labels.
     """    
-    dataset = BallroomDataset(spectrogram_dir, label_dir, dataset_name, downbeats=downbeats)
+    dataset = BallroomDataset(
+        spectrogram_dir,
+        label_dir,
+        dataset_name,
+        validation_fold=validation_fold,
+        subset=subset,
+        downbeats=downbeats
+    )
     return dataset
 
 
@@ -308,7 +324,9 @@ if __name__ == '__main__':
         quit()
 
     # Prepare datasets and DataLoaders
-    datasets = []
+    train_datasets = []
+    val_datasets = []
+    test_datasets = []
     for dataset_name in dataset_names:
         dataset_dir = None
         if dataset_name == "ballroom":
@@ -323,17 +341,36 @@ if __name__ == '__main__':
         spectrogram_dir = os.path.join(dataset_dir, "spectrogram_dir")
         label_dir = os.path.join(dataset_dir, "label")
 
-        datasets.append(load_dataset(
-            spectrogram_dir,
-            label_dir,
-            dataset_name,
-            args.downbeats)
+        train_datasets.append(load_dataset(
+            spectrogram_dir, label_dir, dataset_name=dataset_name,
+            validation_fold=args.validation_fold,
+            subset="train",
+            downbeats=args.downbeats)
         )
+
+        val_datasets.append(load_dataset(
+            spectrogram_dir, label_dir, dataset_name=dataset_name,
+            validation_fold=args.validation_fold,
+            subset="val",
+            downbeats=args.downbeats)
+        )
+
+        test_datasets.append(load_dataset(
+            spectrogram_dir, label_dir, dataset_name=dataset_name,
+            validation_fold=args.validation_fold,
+            subset="test",
+            downbeats=args.downbeats)
+        )
+        # print(len(train_datasets[-1].data_names), train_datasets[-1].data_names)
+        # print(len(val_datasets[-1].data_names), val_datasets[-1].data_names)
+        # print(len(test_datasets[-1].data_names), test_datasets[-1].data_names)
     
-    dataset = torch.utils.data.ConcatDataset(datasets)
+    train_dataset = torch.utils.data.ConcatDataset(train_datasets)
+    val_dataset = torch.utils.data.ConcatDataset(val_datasets)
+    test_dataset = torch.utils.data.ConcatDataset(test_datasets)
     
-    train_dataset, val_dataset, test_dataset =\
-        split_dataset(dataset, args.validation_split, args.test_split)
+    # train_dataset, val_dataset, test_dataset =\
+    #     split_dataset(dataset, args.validation_split, args.test_split)
         
     train_loader, val_loader, test_loader =\
         make_data_loaders(
@@ -353,6 +390,7 @@ if __name__ == '__main__':
         train_loader,
         val_loader=val_loader,
         num_epochs=args.num_epochs,
+        learning_rate=args.lr,
         cuda_device=cuda_device,
         output_file=args.output_file,
         davies_stopping_condition=args.davies_stopping_condition)  #MJ: fold = None; k_fold_cross_validation.py uses fold = k

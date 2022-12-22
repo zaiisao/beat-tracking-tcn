@@ -156,7 +156,8 @@ class NonCausalTemporalConvolutionalNetwork(nn.Module):
         
         n_levels = len(channels)  #MJ:  n_levels 11
 
-        for i in range(n_levels - 1): #i=0,,,(n_levels - 2)
+        #for i in range(n_levels - 1): #i=0,,,(n_levels - 2)
+        for i in range(n_levels): #i=0,,,(n_levels - 1)
             dilation = 2 ** i
 
             n_channels_in = channels[i - 1] if i > 0 else inputs
@@ -173,23 +174,23 @@ class NonCausalTemporalConvolutionalNetwork(nn.Module):
                     dropout=dropout
                 )
             )
-        # i = n_levels - 1
-        dilation = 2 ** (n_levels - 1)
+        # # i = n_levels - 1
+        # dilation = 2 ** (n_levels - 1)
 
-        n_channels_in = channels[n_levels - 2]
-        n_channels_out = channels[n_levels - 1]
+        # n_channels_in = channels[n_levels - 2]
+        # n_channels_out = channels[n_levels - 1]
 
-        self.blocks.append(
-            NonCausalTemporalLayer( ##MJ: Conv1d: input tensor=(B,C,L)
-                n_channels_in,
-                n_channels_out,
-                dilation,
-                kernel_size,
-                stride=2, # JA: Because the stride is 2, the upper layers of TCN will have the half  size of the lower layers
-                padding=(kernel_size - 1) * dilation,
-                dropout=dropout
-            )
-        )
+        # self.blocks.append(
+        #     NonCausalTemporalLayer( ##MJ: Conv1d: input tensor=(B,C,L)
+        #         n_channels_in,
+        #         n_channels_out,
+        #         dilation,
+        #         kernel_size,
+        #         stride=2, # JA: Because the stride is 2, the upper layers of TCN will have the half  size of the lower layers
+        #         padding=(kernel_size - 1) * dilation,
+        #         dropout=dropout
+        #     )
+        # )
         
         #self.net = nn.Sequential(*self.layers) #self.layers is a list of module objects, not visible to nn.torch.Module methods
 
