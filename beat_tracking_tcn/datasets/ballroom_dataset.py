@@ -135,6 +135,10 @@ class BallroomDataset(Dataset):
 
         names = []
         for entry in os.scandir(self.label_dir):
+            _, file_extension = os.path.splitext(entry)
+            if file_extension == ".folds":
+                continue
+
             names.append(os.path.splitext(entry.name)[0])
         return names
 
@@ -205,6 +209,7 @@ class BallroomDataset(Dataset):
         corresponding spectrogram and label dumps.
         """
         data_name = self.data_names[i]
+        
 
         with open(
                 os.path.join(self.label_dir, data_name + '.beats'), #MJ: Media-106011.beats

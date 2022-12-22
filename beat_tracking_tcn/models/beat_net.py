@@ -100,7 +100,7 @@ class BeatNet(nn.Module):
         self.out = nn.Conv1d(16, 1 if not downbeats else 2, 1)  #MJ 16 = channels
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x):
+    def forward(self, x): #MJ: https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460 : __call__ is already defined in nn.Module, will register all hooks and call your forward. That’s also the reason to call the module directly (output = model(data)) instead of model.forward(data).
         """
         Feed a tensor forward through the BeatNet.
 
@@ -124,9 +124,9 @@ class BeatNet(nn.Module):
         y = self.pool2(y)
 
         y = self.conv3(y)
-        y = self.elu3(y)  #MJ: The shape of y = (B,1, H*, W*)
+        y = self.elu3(y)  #MJ: The shape of y = # y.shape: [1, 16, 3000, 1]
 
-        y = y.view(-1, y.shape[1], y.shape[2])  # y.shape: [1, 16, 3000, 1]
+        y = y.view(-1, y.shape[1], y.shape[2])  # y.shape: [1, 16, 3000, 1] => (1,16,3000)
         
         #MJ: In this way, small (overlapping) spectrogram snippets with a context of 5 frames get reduced 
         # to a single frame and 16 features, 16-dim feature vector, which retains the temporal resolution.
@@ -141,9 +141,16 @@ class BeatNet(nn.Module):
         # In the context of real-time beat tracking, such causal processing would be essential 
         # (as well as the need to adapt many other components of the beat tracking system), 
         # but for this paper where all other processing steps are performed offline
+        
         y = self.tcn(y) # y.shape: [1, 16, 3000] Which is the 1D tensor with channel of 16 and length of 3000 and can now enter the 1D TCN
-
-        y = self.out(y) # Output of TCN y has the same shape as the input
+        #  # Output of TCN y has the same shape as the input
+        
+        #MJ: so far, we had the backbone of the net
+        #MJ: the following two layers constitute the output layer (head)
+        #  self.out = nn.Conv1d(16, 1 if not downbeats else 2, 1)  #MJ 16 = channels
+        #  self.sigmoid = nn.Sigmoid()
+        
+        y = self.out(y)
         y = self.sigmoid(y)
 
         return y

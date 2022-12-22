@@ -171,12 +171,12 @@ def train_loop(
     def train_callback(batch_report):
         if batch_report["batch_index"] % 10 == 9:
             if fold is None:
-                print("Training Batch %d; Loss: %.3f; Epoch Loss: %.3f" % (
+                print("Training Batch %d; Loss: %.6f; Epoch Loss: %.6f" % (
                         batch_report["batch_index"],
                         batch_report["batch_loss"],
                         batch_report["running_epoch_loss"]), end="\r")
             else:
-                print("Fold %d; Training Batch %d; Loss: %.3f; Epoch Loss: %.3f" % (
+                print("Fold %d; Training Batch %d; Loss: %.6f; Epoch Loss: %.6f" % (
                         fold,
                         batch_report["batch_index"],
                         batch_report["batch_loss"],
@@ -185,12 +185,12 @@ def train_loop(
     def val_callback(batch_report):
         if batch_report["batch_index"] % 10 == 9:
             if fold is None:
-                print("Validation Batch %d; Loss: %.3f; Epoch Loss: %.3f" % (
+                print("Validation Batch %d; Loss: %.6f; Epoch Loss: %.6f" % (
                         batch_report["batch_index"],
                         batch_report["batch_loss"],
                         batch_report["running_epoch_loss"]), end="\r")
             else:
-                print("Fold: %d; Validation Batch %d; Loss: %.3f; Epoch Loss: %.3f" % (
+                print("Fold: %d; Validation Batch %d; Loss: %.6f; Epoch Loss: %.6f" % (
                         fold,
                         batch_report["batch_index"],
                         batch_report["batch_loss"],
@@ -229,12 +229,12 @@ def train_loop(
             val_loss_history.append(val_report["epoch_loss"])
 
             if fold is None:
-                print("Epoch #%d; Loss: %.3f; Val Loss: %.3f                   " % (
+                print("Epoch #%d; Loss: %.6f; Val Loss: %.6f                   " % (
                         epoch,
                         epoch_report["epoch_loss"],
                         val_report["epoch_loss"]))
             else:
-                print("Fold: #%d; Epoch #%d; Loss: %.3f; Val Loss: %.3f                   " % (
+                print("Fold: #%d; Epoch #%d; Loss: %.6f; Val Loss: %.6f                   " % (
                         fold,
                         epoch,
                         epoch_report["epoch_loss"],
@@ -248,10 +248,10 @@ def train_loop(
                     break
         else:
             if fold is None:
-                print("Epoch #%d; Loss: %.3f                                    " %
+                print("Epoch #%d; Loss: %.6f                                    " %
                     (epoch, epoch_report["epoch_loss"]))
             else:
-                print("Fold: #%d; Epoch #%d; Loss: %.3f                                    " %
+                print("Fold: #%d; Epoch #%d; Loss: %.6f                                    " %
                     (fold, epoch, epoch_report["epoch_loss"]))
 
         
@@ -266,7 +266,7 @@ def test_model(model, test_loader, cuda_device=None):
     Evaluate the model on the dataset slice pointed to by the given DataLoader.
     """    
     def test_callback(batch_report):
-        print("Test Batch %d; Loss: %.3f; Epoch Loss: %.3f" % (
+        print("Test Batch %d; Loss: %.6f; Epoch Loss: %.6f" % (
                 batch_report["batch_index"],
                 batch_report["batch_loss"],
                 batch_report["running_epoch_loss"]), end="\r")
