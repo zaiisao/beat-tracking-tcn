@@ -100,7 +100,9 @@ class BeatNet(nn.Module):
         self.out = nn.Conv1d(16, 1 if not downbeats else 2, 1)  #MJ 16 = channels
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x): #MJ: https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460 : __call__ is already defined in nn.Module, will register all hooks and call your forward. That’s also the reason to call the module directly (output = model(data)) instead of model.forward(data).
+    #MJ: https://discuss.pytorch.org/t/is-model-forward-x-the-same-as-model-call-x/33460 : __call__ is already defined in nn.Module, will register all hooks and call your forward. That’s also the reason to call the module directly (output = model(data)) instead of model.forward(data).
+    #MJ: called by     tcn_layers, base_level_image_shape = self.tcn2019(audio_batch, number_of_backbone_layers, base_image_level_from_top)
+    def forward(self, x, number_of_backbone_layers=None, base_image_level=None):
         """
         Feed a tensor forward through the BeatNet.
 
@@ -142,7 +144,7 @@ class BeatNet(nn.Module):
         # (as well as the need to adapt many other components of the beat tracking system), 
         # but for this paper where all other processing steps are performed offline
         
-        y = self.tcn(y) # y.shape: [1, 16, 3000] Which is the 1D tensor with channel of 16 and length of 3000 and can now enter the 1D TCN
+        tcn_layers, base_level_image_shape = self.tcn(y, number_of_backbone_layers, base_image_level)  # y.shape: [1, 16, 3000] Which is the 1D tensor with channel of 16 and length of 3000 and can now enter the 1D TCN
         #  # Output of TCN y has the same shape as the input
         
         #MJ: so far, we had the backbone of the net
@@ -150,6 +152,8 @@ class BeatNet(nn.Module):
         #  self.out = nn.Conv1d(16, 1 if not downbeats else 2, 1)  #MJ 16 = channels
         #  self.sigmoid = nn.Sigmoid()
         
+        y = tcn_layers[-1]
+
         y = self.out(y)
         y = self.sigmoid(y)
 
