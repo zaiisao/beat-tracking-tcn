@@ -98,6 +98,7 @@ if __name__ == '__main__':
     score_history = {}
     downbeat_score_history = {}
 
+    #MJ: evaluate the model on all fold combinations:
     for k, model_checkpoint in enumerate(args.model_checkpoints):
         # Find the dataset file for the given fold k  and load only the unseen
         # test set.

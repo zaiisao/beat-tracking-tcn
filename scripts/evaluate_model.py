@@ -20,20 +20,21 @@ from argparse import ArgumentParser
 from mir_eval.beat import evaluate
 
 from beat_tracking_tcn.beat_tracker import predict_beats_from_spectrogram
-from beat_tracking_tcn.datasets.ballroom_dataset import BallroomDataset
+from beat_tracking_tcn.dataswherets.beat_dataset import BeatDataset
 
 def parse_args():
     parser = ArgumentParser(
         description="Perform evaluation on a given BeatNet model")
-
-    parser.add_argument("spectrogram_dir", type=str)
-    parser.add_argument("label_dir", type=str)
-    parser.add_argument("model_checkpoint", type=str)
+    
+    
+    parser.add_argument("spectrogram_dir", type=str)  #MJ:     #   == "/mount/beat-tracking/ballroom/spectrogram_dir",
+    parser.add_argument("label_dir", type=str)                 # ==  "/mount/beat-tracking/ballroom/label",
+    parser.add_argument("model_checkpoint", type=str)          # ==  "/home/yeol/moon/beat-tracking-tcn/checkpoints",
     parser.add_argument("--downbeats", action="store_true")
 
     return parser.parse_args()
 
-def evaluate_model(
+def evaluate_model_on_spectrogram(
         model_checkpoint,
         spectrogram,
         ground_truth,
@@ -105,24 +106,44 @@ def evaluate_model_on_dataset(
     # Create dicts to store scores and histories
     mean_scores = {}
     mean_downbeat_scores = {}
+    
     running_scores = {}
+    
     running_downbeat_scores = {}
 
-    # Iterate over dataset
+    # Iterate over dataset: compute the beat scores for each audio
     for i in range(len(dataset)):
         spectrogram = dataset[i]["spectrogram"].unsqueeze(0)
         ground_truth = ground_truths[i]
 
         #MJ:   Given a spectrogram, predict a list of beat times using the TCN model and  a DBN post-processor.
-        scores = evaluate_model(
+        scores = evaluate_model_on_spectrogram(
             model_checkpoint,
             spectrogram,
             ground_truth,
             downbeats)
 
+    #MJ: scores: scores for all metrics:
+        
+    # F-Measure
+    # scores['F-measure'] = util.filter_kwargs(f_measure, reference_beats,
+    #                                          estimated_beats, **kwargs)
+
+    # # Cemgil
+    # scores['Cemgil'], scores['Cemgil Best Metric Level'] = \
+    #     util.filter_kwargs(cemgil, reference_beats, estimated_beats, **kwargs)
+
+    # # Goto
+    # scores['Goto'] = util.filter_kwargs(goto, reference_beats,
+    #                                     estimated_beats, **kwargs)
+
+    # # P-Score
+    # scores['P-score'] = util.filter_kwargs(p_score, reference_beats,
+    #                                        estimated_beats, **kwargs)
+
+
         # If we're tracking downbeats, separate out the evaluation scores and
-        # process independently. Otherwise, we only need to worry about beat
-        scores
+        # process independently. Otherwise, we only need to worry about beat  scores
         if downbeats:
             beat_scores = scores[0]
             downbeat_scores = scores[1]
@@ -166,6 +187,10 @@ def evaluate_model_on_dataset(
 if __name__ == "__main__":
     args = parse_args()
 
+    #MJ: to redirct the print outs to a file
+    filename = "/home/yeol/moon/beat-tracking-tcn/score_file2"
+    f = open(filename,'w')
+    
     def print_callback(i, running_scores):
         """
         Evaluation function set up such that scores are passed to a callback
@@ -180,7 +205,8 @@ if __name__ == "__main__":
                 for vowel in "aeiouAEIOU":
                     words[i] = words[i][0] + words[i][1:].replace(vowel, "")
             return "".join(words)
-
+        #END def make_metric_heading(metric)
+        
         # The first iteration of the first fold, we also need to print the
         # table headnings.
         if i == 0:
@@ -198,7 +224,7 @@ if __name__ == "__main__":
                         heading += " "
                 heading += "|"
                 line += heading
-            print(line)
+            print(line, file=f)
 
         # Build a line of scores, truncating the decimal places to match the
         # length of the given heading.
@@ -210,13 +236,19 @@ if __name__ == "__main__":
                 max(4, number_length),
                 running_scores[metric] / (i + 1))
         # Print, overwriting the previously printed line each time.
-        print(line, end="\r")
-
-    # Load the dataset from the given directories
-    dataset = BallroomDataset(
+        print(line, end="\r", file=f)  #MJ: https://stackoverflow.com/questions/7152762/how-to-redirect-print-output-to-a-file
+        
+    #END def print_callback(i, running_scores)
+    
+    #JA: Load the dataset from the given directories
+    dataset = BeatDataset(
         args.spectrogram_dir,
         args.label_dir,
+        dataset_name="ballroom",
+        subset="test",
+        validation_fold=0,
         downbeats=args.downbeats)
+    
 
     # Process downbeats and beats independently if necessary
     if args.downbeats:

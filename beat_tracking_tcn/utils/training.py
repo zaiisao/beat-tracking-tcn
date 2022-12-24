@@ -47,7 +47,7 @@ def train(
 
     running_loss = 0.0
 
-    for i, batch in enumerate(data_loader):
+    for i, batch in enumerate(data_loader): #batch = x,y=spectrogram, beat_vector_spec (trimmed to 3000)
         optimiser.zero_grad()
 
         outputs, loss = forward_batch(model, criterion, batch, cuda_device)
@@ -174,7 +174,7 @@ def forward_batch(
         tuple -- A tuple of the output tensor and the calculated loss.
     """
     X = batch["spectrogram"]
-    y = batch["target"]
+    y = batch["target"]  #MJ: y = beat_vector_spec: shape=(2,3000) [ tracking downbeats= default] or (3000,)
 
     if cuda_device is not None:
         X = X.to(device=cuda_device)

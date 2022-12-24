@@ -17,7 +17,7 @@ import os
 import numpy as np
 
 
-class BallroomDataset(Dataset):
+class BeatDataset(Dataset):
     """
     A PyTorch Dataset wrapping the ballroom dataset for beat detection tasks
 
@@ -39,7 +39,12 @@ class BallroomDataset(Dataset):
             sr=22050,
             hop_size_in_seconds=0.01,  #MJ: = 10ms
             trim_size=(81, 3000), 
-            #MJ: 1/100 s/f => 100 frames/sec * 30 sec = 3000 frames. Obtain 81 freq bins over a window of 1/100 s/f= 10ms /frame
+            
+            #MJ:  hop_size_in_seconds=0.01:  1/100 s/f => 100 frames/sec * 30 sec = 3000 frames.
+            # Obtain 81 freq bins over the audio by means of window whose length is 2048 samples by default:
+            
+            # That is, using window size of 46.4 ms (2048 samples; FFT_SIZE = 2048).
+            
             #MJ: Davies and Boek, 2019: BLSTM:
             #  Three such spectrograms are calculated at a fixed hop size of 10 ms 
             # with increasing window sizes of 23.2 ms, 46.4 ms and 92.9 ms
@@ -69,6 +74,7 @@ class BallroomDataset(Dataset):
         self.dataset_name = dataset_name
         self.subset = subset
         self.validation_fold = validation_fold
+        
         self.data_names = self._get_data_list()
 
         self.sr = 22050
@@ -83,16 +89,17 @@ class BallroomDataset(Dataset):
 
     def __getitem__(self, i):
         """Overload square bracket indexing on object"""
-        raw_spec, raw_beats = self._load_spectrogram_and_labels(i) #MJ = spectrogram, beat_vector
-        x, y = self._trim_spec_and_labels(raw_spec, raw_beats)
+        raw_spec, raw_beats = self._load_spectrogram_and_labels(i)  #MJ: spectrogram: shape=  (81, 3022), say;  beat_vector_spec: shape=(3080,2)
+        x, y = self._trim_spec_and_labels(raw_spec, raw_beats)  #MJ: y: trimmed to  (3000,) or (3000,2)
 
-        if self.downbeats: #MJ: y =(3000,2) => (2,3000) = (ch, time)
+        if self.downbeats: #MJ: y: shape =(3000,2) => y.T:  shape = (2,3000) = (ch, T): the shape of pytorch 1D tensor
             y = y.T
 
+        #Create the dataset dictionary with field "spectrogram" and "target" and return it
         return {
             'spectrogram': torch.from_numpy(
-                    np.expand_dims(x.T, axis=0)).float(),
-            'target': torch.from_numpy(y[:3000].astype('float64')).float(),
+                    np.expand_dims(x.T, axis=0)).float(),  #MJ:x.T: shape = (3000,81);  spectrogram: shape=(1,3000,81) =(C,H,W) = one channel 2D tensor
+            'target': torch.from_numpy(y[:3000].astype('float64')).float(),  #MJ: y: shape=(2,3000)
         }
 
     def get_name(self, i):
@@ -123,23 +130,23 @@ class BallroomDataset(Dataset):
             labels: Labels as NumPy array
         """
 
-        x = np.zeros(self.trim_size)
+        x = np.zeros(self.trim_size)  #MJ: trim_size = (81,3000)
         if not self.downbeats:
-            y = np.zeros(self.trim_size[1])
+            y = np.zeros(self.trim_size[1])  #MJ: y: shape =(3000,)
         else: #MJ: downbeat
-            y = np.zeros((self.trim_size[1], 2))
+            y = np.zeros((self.trim_size[1], 2))  #MJ: y: shape = (3000,2)
 
-        to_x = self.trim_size[0]
-        to_y = min(self.trim_size[1], spec.shape[1])
+        to_x = self.trim_size[0]  #to_x = 81
+        to_y = min(self.trim_size[1], spec.shape[1])  #to_y = min of 3000 and  3022 of spec.shape= (81, 3022)
 
         x[:to_x, :to_y] = spec[:, :to_y]
-        y[:to_y] = labels[:to_y]
+        y[:to_y] = labels[:to_y]   #MJ: labels = beat_vector_spec; x = 0th dim, y = 1th dim
 
         return x, y
 
     def _get_data_list(self):
         """Fetches list of datapoints in label directory"""
-
+        #JA rewrote this function.
         names = []
         if self.validation_fold is None:
             label_dir_entries = os.scandir(self.label_dir)
@@ -176,7 +183,7 @@ class BallroomDataset(Dataset):
                     audio_filename_start = len(self.dataset_name) + 1 # Each line in a .folds file starts with "DATASET_"
 
                     validation_fold = self.validation_fold
-                    test_fold = (validation_fold + 1) % k
+                    test_fold = (validation_fold + 1) % k  #MJ: test_folder = validation_folder +1
                     is_valid_and_training = \
                         self.subset == "train" \
                         and validation_fold != int(fold_number) \
@@ -203,8 +210,9 @@ class BallroomDataset(Dataset):
                             print(f"{audio_file_path} not found; skipping")
 
         return names
-
-    def _text_label_to_float(self, text):
+    #END def _get_data_list(self)
+    
+    def _text_label_to_float(self, text): #MJ: text = line
         """Exracts beat time from a text line and converts to a float"""
         allowed = '1234567890. \t'
         filtered = ''.join([c for c in text if c in allowed])
@@ -214,11 +222,12 @@ class BallroomDataset(Dataset):
             t = filtered.rstrip('\n').split(' ')
         
         if self.dataset_name == "rwc_popular":
-            time_sec = int(t[0]) / 100.0
-            beat = 1 if int(t[2]) == 384 else 2
+            time_sec = int(t[0]) / 100.0  #MJ: time step is 10ms
+            beat = 1 if int(t[2]) == 384 else 2  #MJ 1-, 384, 48,96,144,384,48,96,144,384
             return time_sec, beat
+        
         elif self.dataset_name == "beatles":
-            if len(t) == 3:
+            if len(t) == 3: #MJ: time blank_space beat_index
                 return float(t[0]), float(t[2])
             elif len(t) == 2:
                 return float(t[0]), float(t[1])
@@ -243,21 +252,27 @@ class BallroomDataset(Dataset):
         label file. Then, quantises it to the nearest spectrogram frames in
         order to allow fair performance evaluation.
         """
+        
+        data_name = os.path.basename( self.data_names[i] )
 
         file_extension = self._get_beat_label_file_extension()
         with open(
-                os.path.join(self.label_dir, self.data_names[i] + file_extension),
+                os.path.join(self.label_dir, data_name + file_extension),
                 'r') as f:
 
             beat_times = []
 
             for line in f:
+                
                 time, index = self._text_label_to_float(line)
+                
                 if not downbeats:
                     beat_times.append(time * self.sr)
                 else:
                     if index == 1:
                         beat_times.append(time * self.sr)
+            #END for line in f
+                        
         quantised_times = []
 
         for time in beat_times:
@@ -272,10 +287,12 @@ class BallroomDataset(Dataset):
         Fetches the ground truth (time labels) from the appropriate
         label file.
         """
+        
+        data_name = os.path.basename(self.data_names[i])
 
         file_extension = self._get_beat_label_file_extension()
         with open(
-                os.path.join(self.label_dir, self.data_names[i] + file_extension),
+                os.path.join(self.label_dir, data_name + file_extension),
                 'r') as f:
             
             beat_times = []
@@ -311,41 +328,49 @@ class BallroomDataset(Dataset):
                 beat_indices.append(parsed[1]) #MJ: 1, 2,3,4; 1,2,34; etc
                 
             beat_times = np.array(beat_floats) * self.sr  #MJ: beat_times= beat locations in audio sample unit
-
+            
+            #MJ: beat_times include downbeat_times
             if self.downbeats:
                 downbeat_times = self.sr * np.array(
                     [t for t, i in zip(beat_floats, beat_indices) if i == 1])
 
         spectrogram =\
-            np.load(os.path.join(self.spectrogram_dir, data_name + '.npy')) # (81, 3022) will be trimmed to (81, 3000)
+            np.load(os.path.join(self.spectrogram_dir, data_name + '.npy')) #spectrogram: shape= (81, 3022), say
+        
         if not self.downbeats:
-            beat_vector = np.zeros(spectrogram.shape[-1])  #MJ: spectrogram: shape = (81,3000)
+            beat_vector_spec = np.zeros(spectrogram.shape[-1])  #MJ: spectrogram: shape = (81,3000)
                                                            #MJ: spectrogram.shape[-1] = 3000
         else:
-            beat_vector = np.zeros((spectrogram.shape[-1], 2))  #MJ: beat_vector: shape = (3000,2)
+            beat_vector_spec = np.zeros((spectrogram.shape[-1], 2))  #MJ: tracking downbeats as well: beat_vector: shape = (3000,2)
 
-        for time in beat_times:  #MJ: beat_times= beat locations in audio sample unit
-            spec_frame =\
-                min(int(time / self.hop_size), beat_vector.shape[0] - 1) #MJ: beat_vector.shape[0]=3000
-                
-            #MJ: Davies & Boek, 2019: Following the strategy of [14] for onset detection, 
+        #Augment beat activation signals:
+         #MJ: Davies & Boek, 2019: Following the strategy of [14] for onset detection, 
             # we widen the temporal activation region around the annotations to include two adjacent temporal 
             # frames on either side of each quantised beat location and weight them with a value of 0.5
-            # during training:    
+            # during training: 
+            
+        for sample  in beat_times:  #MJ: beat_times= beat locations in audio sample unit
+            #Get the spectrogram frame index corresponding to each beat time in sample unit' beat_vector_spec is already in spectrogram frame units
+            spec_frame =\
+                min( int( sample / self.hop_size) , beat_vector_spec.shape[0] - 1) #MJ: hp_size= hop length in sample unit: beat_vector.shape[0]=3000
+                
+              
             for n in range(-2, 3): #MJ: n in [-2,2]
-                if 0 <= spec_frame + n < beat_vector.shape[0]:
+                
+                if 0 <= spec_frame + n < beat_vector_spec.shape[0]: #spec_frame + n = the neighbor beat should be in valid range
+                    
                     if not self.downbeats:
-                        beat_vector[spec_frame + n] = 1.0 if n == 0 else 0.5 #MJ: beat_vector=[0.5, 0.5, 1, 0.5, 0.5]
+                        beat_vector_spec[spec_frame + n] = 1.0 if n == 0 else 0.5 #MJ: beat_vector=[0.5, 0.5, 1, 0.5, 0.5]
                     else:
-                        beat_vector[spec_frame + n, 0] = 1.0 if n == 0 else 0.5  #MJ: Downbeat  is a beat and downbeat at the same time
+                        beat_vector_spec[spec_frame + n, 0] = 1.0 if n == 0 else 0.5  #MJ: Downbeat  is a beat and downbeat at the same time
         
         if self.downbeats:
-            for time in downbeat_times:
+            for sample in downbeat_times:
                 spec_frame =\
-                    min(int(time / self.hop_size), beat_vector.shape[0] - 1)
+                    min(int( sample / self.hop_size), beat_vector_spec.shape[0] - 1)
                 for n in range(-2, 3):
-                    if 0 <= spec_frame + n < beat_vector.shape[0]:
-                        beat_vector[spec_frame + n, 1] = 1.0 if n == 0 else 0.5
+                    if 0 <= spec_frame + n < beat_vector_spec.shape[0]:
+                        beat_vector_spec[spec_frame + n, 1] = 1.0 if n == 0 else 0.5
 
 
-        return spectrogram, beat_vector
+        return spectrogram, beat_vector_spec

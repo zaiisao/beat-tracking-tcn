@@ -19,7 +19,7 @@ from torch.nn import BCELoss
 from torch.optim import Adam, lr_scheduler  #MJ: lr_scheduler.py
 from torch import device, save
 
-from beat_tracking_tcn.datasets.ballroom_dataset import BallroomDataset
+from beat_tracking_tcn.datasets.beat_dataset import BeatDataset
 from beat_tracking_tcn.models.beat_net import BeatNet
 from beat_tracking_tcn.utils.training import train, evaluate
 
@@ -106,13 +106,13 @@ def parse_args():
 
     return parser.parse_args()
 
-
+#MJ: The following loads only BallRoomDataset and is NOT used in this code
 def load_dataset(spectrogram_dir, label_dir, dataset_name, validation_fold=None, subset=None, downbeats=False):
     """
     Creates an instance of BallroomDataset from the given folders of
     spectrograms and labels.
     """    
-    dataset = BallroomDataset(
+    dataset = BeatDataset(
         spectrogram_dir,
         label_dir,
         dataset_name,
@@ -158,7 +158,10 @@ def save_model(model, output_file):
     with open(output_file, 'wb') as f:
         save(state_dict, f)
 
-
+#MJ:  save_datasets(
+ #   (train_dataset, val_dataset, test_dataset),
+ #   args.dataset_output_file)
+            
 def save_datasets(datasets, file):
     """
     Dump the datasets to disk using torch.save
@@ -204,6 +207,7 @@ def train_loop(
                         batch_report["batch_index"],
                         batch_report["batch_loss"],
                         batch_report["running_epoch_loss"]), end="\r")
+    #END def train_callback(batch_report)
     
     def val_callback(batch_report):
         if batch_report["batch_index"] % 10 == 9:
@@ -218,7 +222,9 @@ def train_loop(
                         batch_report["batch_index"],
                         batch_report["batch_loss"],
                         batch_report["running_epoch_loss"]), end="\r")
-
+    #END def val_callback(batch_report)
+    
+    #MJ: within train_loop():
     val_loss_history = []
     
     criterion = BCELoss()
@@ -270,7 +276,7 @@ def train_loop(
                 and len(val_loss_history) > DAVIES_CONDITION_EPOCHS:
                     break
         else:
-            if fold is None:
+            if fold is None: #MJ: this is the condition in which MJ ran train.py
                 print("Epoch #%d; Loss: %.6f                                    " %
                     (epoch, epoch_report["epoch_loss"]))
             else:
@@ -282,6 +288,7 @@ def train_loop(
             save_model(model, output_file)
 
     return model
+#END def train_loop
 
 
 def test_model(model, test_loader, cuda_device=None):
@@ -311,6 +318,8 @@ def test_model(model, test_loader, cuda_device=None):
     print("Test Loss: %.5f                                                 " %
           test_report["epoch_loss"])
 
+#END def test_model(model, test_loader, cuda_device=None)
+
 
 if __name__ == '__main__':
     
@@ -323,11 +332,15 @@ if __name__ == '__main__':
               + "Davies stopping condition.")
         quit()
 
+    #JA: added all datasets for beat tracking
+    
     # Prepare datasets and DataLoaders
     train_datasets = []
     val_datasets = []
     test_datasets = []
+    
     for dataset_name in dataset_names:
+        
         dataset_dir = None
         if dataset_name == "ballroom":
             dataset_dir = args.ballroom_dir
@@ -337,39 +350,43 @@ if __name__ == '__main__':
             dataset_dir = args.rwc_popular_dir
         elif dataset_name == "beatles":
             dataset_dir = args.beatles_dir
+            
+        if not dataset_dir:
+            continue
 
         spectrogram_dir = os.path.join(dataset_dir, "spectrogram_dir")
         label_dir = os.path.join(dataset_dir, "label")
 
-        train_datasets.append(load_dataset(
+        train_datasets.append( load_dataset(
             spectrogram_dir, label_dir, dataset_name=dataset_name,
             validation_fold=args.validation_fold,
             subset="train",
             downbeats=args.downbeats)
         )
 
-        val_datasets.append(load_dataset(
+        val_datasets.append( load_dataset(
             spectrogram_dir, label_dir, dataset_name=dataset_name,
             validation_fold=args.validation_fold,
             subset="val",
             downbeats=args.downbeats)
         )
 
-        test_datasets.append(load_dataset(
+        test_datasets.append( load_dataset(
             spectrogram_dir, label_dir, dataset_name=dataset_name,
             validation_fold=args.validation_fold,
             subset="test",
             downbeats=args.downbeats)
         )
-        # print(len(train_datasets[-1].data_names), train_datasets[-1].data_names)
+        #JA:  print(len(train_datasets[-1].data_names), train_datasets[-1].data_names)
         # print(len(val_datasets[-1].data_names), val_datasets[-1].data_names)
         # print(len(test_datasets[-1].data_names), test_datasets[-1].data_names)
+    #END for dataset_name in dataset_names
     
     train_dataset = torch.utils.data.ConcatDataset(train_datasets)
     val_dataset = torch.utils.data.ConcatDataset(val_datasets)
     test_dataset = torch.utils.data.ConcatDataset(test_datasets)
     
-    # train_dataset, val_dataset, test_dataset =\
+    #JA: train_dataset, val_dataset, test_dataset =\
     #     split_dataset(dataset, args.validation_split, args.test_split)
         
     train_loader, val_loader, test_loader =\
@@ -393,7 +410,9 @@ if __name__ == '__main__':
         learning_rate=args.lr,
         cuda_device=cuda_device,
         output_file=args.output_file,
-        davies_stopping_condition=args.davies_stopping_condition)  #MJ: fold = None; k_fold_cross_validation.py uses fold = k
+        davies_stopping_condition=args.davies_stopping_condition,
+        fold=None)  #MJ: fold = None => Do not use folds. To use folds, use create_k_folds_cross_validation_models.py and evaluate_k_folds_models.py
+                    #MJ: In the case of fold = None, use train.py (this script) and evaludate_model.py
 
     # Save our model to disk 
     if args.output_file is not None:
@@ -402,7 +421,7 @@ if __name__ == '__main__':
     # Save our dataset splits for reproducibility
     if args.dataset_output_file is not None:
         save_datasets(
-            (train_dataset, val_dataset, test_dataset),
+            (train_dataset, val_dataset, test_dataset),  #MH: save a tuple of tensors to a file
             args.dataset_output_file)
 
     # Evaluate on our test set

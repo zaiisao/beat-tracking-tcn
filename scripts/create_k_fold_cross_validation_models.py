@@ -30,8 +30,8 @@ def parse_args():
     parser = ArgumentParser(
         description="Perform k-fold cross-validation on a BeatNet model")
 
-    parser.add_argument("spectrogram_dir", type=str)
-    parser.add_argument("label_dir", type=str)
+    parser.add_argument("spectrogram_dir", type=str)  #MJ:   "spectrogram_dir", "/mount/beat-tracking/ballroom/spectrogram_dir",
+    parser.add_argument("label_dir", type=str)        #MJ: "label_dir", "/mount/beat-tracking/ballroom/label",
     parser.add_argument(
         "-k",
         "--num_folds",
@@ -136,7 +136,7 @@ def save_datasets(datasets, file):
 if __name__ == "__main__":
     args = parse_args()
     
-    dataset = load_dataset(
+    dataset = load_dataset(   #MJ: only for BallRoom dataset => You need to use all datasets to create folds.
         args.spectrogram_dir,
         args.label_dir,
         args.downbeats)

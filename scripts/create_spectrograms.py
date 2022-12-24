@@ -24,9 +24,9 @@ import sys
 # which directs Python to search modules in the current directory first.
 
 #Add directly the current working directory to sys.path:
-sys.path.append('/home/yeol/moon/beat-tracking-tcn')
-#sys.path.append('/home/yeol/moon/beat-tracking-tcn/beat_tracking_tcn')
-print(f' sys.path=\n{sys.path}')
+# sys.path.append('/home/yeol/moon/beat-tracking-tcn')
+# #sys.path.append('/home/yeol/moon/beat-tracking-tcn/beat_tracking_tcn')
+# print(f' sys.path=\n{sys.path}')
 
 from argparse import ArgumentParser
 
@@ -41,25 +41,26 @@ def parse_args():
                     "mel spectrograms as NumPy dumps")
 
     parser.add_argument(
-        "audio_directory",
+        "audio_directory", #MJ:  "/mount/beat-tracking/rwc_popular/data",
+                   
         type=str
     )
     parser.add_argument(
-        "output_directory",
+        "output_directory", #MJ: "/mount/beat-tracking/rwc_popular/spectrogram_dir", 
         type=str
     )
     parser.add_argument(
         "-f",
         "--fft_size",
         type=int,
-        default=2048,
+        default=2048,  #MJ: fft_size = 2048 samples corresponds to a physical duration of 93 ms at 22050Hz
         help="Size of the FFT (default=2048)"
     )
     parser.add_argument(
         "-l",
-        "--hop_length",
+        "--hop_length", #MJ: window_length = hop_length
         type=float,
-        default=0.01,
+        default=0.01, # 0.01s * 22050 /s = 220 samples, = 10ms; default=512 samples = 23ms
         help="Hop length in seconds (default=0.01)"
     )
     parser.add_argument(
